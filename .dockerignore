@@ -1,0 +1,9 @@
+data/config.json
+data/.spotify_cache
+data/tracks.db
+__pycache__/
+*.pyc
+*.tar.gz
+.git/
+.claude/
+.gitignore

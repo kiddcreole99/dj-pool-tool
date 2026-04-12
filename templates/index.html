@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎧 DJ Pool Tool</title>
+  <style>
+    :root {
+      --bg:           #1e1e2e;
+      --surface:      #252537;
+      --surface2:     #2d2d44;
+      --surface3:     #363655;
+      --border:       #38385a;
+      --accent:       #6c7db0;
+      --accent-dim:   #4a5d94;
+      --text:         #dde1f0;
+      --text-muted:   #8a8fb5;
+      --text-dim:     #52567a;
+      --green:        #4a9e6e;
+      --green-dim:    #2d6647;
+      --red:          #a05555;
+      --red-dim:      #6e3535;
+      --yellow:       #b09040;
+      --blue:         #4a82a8;
+      --blue-dim:     #2d5470;
+      --header-h:     54px;
+      --toolbar-h:    50px;
+      --left-w:       360px;
+      --action-h:     66px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      font-size: 13px;
+    }
+
+    /* ── Header ───────────────────────────────────────────── */
+    header {
+      height: var(--header-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 20px;
+      flex-shrink: 0;
+    }
+
+    .logo { font-size: 15px; font-weight: 700; white-space: nowrap; }
+    .logo span { color: var(--accent); }
+    .hdivider { width: 1px; height: 20px; background: var(--border); }
+
+    #stats { display: flex; gap: 14px; flex: 1; }
+    .stat  { color: var(--text-muted); white-space: nowrap; }
+    .stat strong { color: var(--text); }
+
+    #pool-toggles { display: flex; gap: 8px; }
+
+    .pool-toggle {
+      padding: 5px 13px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .pool-toggle.on    { background: var(--accent-dim); border-color: var(--accent); color: var(--text); }
+    .pool-toggle:hover { border-color: var(--accent); color: var(--text); }
+
+    #scan-msg { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+
+    /* ── Toolbar ──────────────────────────────────────────── */
+    .toolbar {
+      height: var(--toolbar-h);
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    #playlist-url {
+      flex: 1;
+      max-width: 480px;
+      padding: 7px 11px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+    }
+    #playlist-url::placeholder { color: var(--text-dim); }
+    #playlist-url:focus { border-color: var(--accent); }
+
+    .toolbar-divider { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+
+    #toolbar-msg { font-size: 12px; color: var(--text-muted); flex: 1; }
+
+    #playlist-select {
+      padding: 7px 11px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      max-width: 280px;
+    }
+    #playlist-select:focus { border-color: var(--accent); }
+
+    /* ── Layout ───────────────────────────────────────────── */
+    main { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Left panel ───────────────────────────────────────── */
+    .left-panel {
+      width: var(--left-w);
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+    }
+
+    .filter-wrap {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #filter {
+      width: 100%;
+      padding: 7px 11px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+    }
+    #filter::placeholder { color: var(--text-dim); }
+    #filter:focus        { border-color: var(--accent); }
+
+    .playlist-label {
+      padding: 6px 12px 5px;
+      font-size: 11px;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #track-list { flex: 1; overflow-y: auto; }
+
+    .track-item {
+      display: flex;
+      gap: 9px;
+      padding: 9px 12px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background 0.1s;
+      align-items: flex-start;
+    }
+    .track-item:hover  { background: var(--surface2); }
+    .track-item.active { background: var(--surface3); border-left-color: var(--accent); }
+
+    .track-emoji { font-size: 13px; margin-top: 1px; flex-shrink: 0; line-height: 1.4; }
+
+    .track-body { flex: 1; min-width: 0; }
+
+    .track-name {
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.4;
+    }
+    .track-artist {
+      color: var(--text-muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+    .track-has-file {
+      display: inline-block;
+      margin-top: 3px;
+      font-size: 10px;
+      color: var(--blue);
+      background: var(--blue-dim);
+      padding: 1px 6px;
+      border-radius: 10px;
+    }
+
+    .empty-msg { padding: 30px 16px; text-align: center; color: var(--text-dim); }
+
+    /* ── Right panel ──────────────────────────────────────── */
+    .right-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: var(--bg);
+    }
+
+    /* Search bar */
+    .search-bar {
+      padding: 12px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+      align-items: center;
+    }
+
+    .search-bar-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-right: 4px;
+      white-space: nowrap;
+    }
+
+    /* Track detail */
+    .detail-panel {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .detail-empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--text-dim);
+    }
+    .detail-empty .de-icon { font-size: 40px; opacity: 0.35; }
+    .detail-empty .de-text { font-size: 14px; }
+
+    .detail-header { display: flex; align-items: flex-start; gap: 16px; }
+
+    .detail-status { font-size: 28px; flex-shrink: 0; margin-top: 2px; }
+
+    .detail-title-block { flex: 1; min-width: 0; }
+
+    .detail-title {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    .detail-artist {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      word-break: break-word;
+    }
+
+    .detail-album {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 3px;
+    }
+
+    .detail-divider {
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Local file box */
+    .local-file-box {
+      background: var(--blue-dim);
+      border: 1px solid var(--blue);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+
+    .local-file-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--blue);
+      margin-bottom: 7px;
+    }
+
+    .local-file-path {
+      font-size: 13px;
+      color: var(--text);
+      word-break: break-all;
+      line-height: 1.5;
+    }
+
+    .detail-status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .status-badge {
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+    }
+
+    /* ── Action bar ───────────────────────────────────────── */
+    .action-bar {
+      height: var(--action-h);
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .btn {
+      padding: 7px 16px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) { border-color: var(--accent); background: var(--surface3); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .btn-search   { background: var(--accent-dim); border-color: var(--accent); }
+    .btn-search:hover:not(:disabled) { background: var(--accent); }
+
+    .btn-got      { border-color: var(--green); }
+    .btn-got:hover:not(:disabled)    { background: var(--green-dim); border-color: var(--green); }
+
+    .btn-notfound { border-color: var(--red); }
+    .btn-notfound:hover:not(:disabled) { background: var(--red-dim); border-color: var(--red); }
+
+    .btn-skip     { border-color: var(--text-dim); }
+
+    .action-spacer { flex: 1; }
+
+    /* Scrollbar */
+    #track-list::-webkit-scrollbar       { width: 5px; }
+    #track-list::-webkit-scrollbar-track { background: transparent; }
+    #track-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    #track-list::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    .detail-panel::-webkit-scrollbar       { width: 5px; }
+    .detail-panel::-webkit-scrollbar-track { background: transparent; }
+    .detail-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── Review modal ─────────────────────────────────────── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 20, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-backdrop.hidden { display: none; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 680px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title { font-size: 15px; font-weight: 700; }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px 8px;
+    }
+    .modal-close:hover { color: var(--text); }
+
+    .modal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    .review-item {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .review-row { display: flex; gap: 16px; align-items: flex-start; }
+
+    .review-left, .review-right { flex: 1; min-width: 0; }
+
+    .review-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      margin-bottom: 5px;
+    }
+
+    .review-track { font-size: 13px; font-weight: 500; }
+    .review-artist { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    .review-file {
+      font-size: 12px;
+      color: var(--text-muted);
+      word-break: break-all;
+      line-height: 1.4;
+    }
+
+    .review-conf {
+      font-size: 12px;
+      color: var(--yellow);
+      margin-top: 4px;
+    }
+
+    .review-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      justify-content: flex-end;
+    }
+
+    .review-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--yellow);
+      color: #1e1e2e;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 10px;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      margin-left: 6px;
+    }
+
+    .modal-empty {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-dim);
+    }
+
+    .track-review-badge {
+      display: inline-block;
+      margin-top: 3px;
+      font-size: 10px;
+      color: var(--yellow);
+      background: rgba(176, 144, 64, 0.2);
+      padding: 1px 6px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">🎧 DJ <span>Pool</span> Tool</div>
+  <div class="hdivider"></div>
+  <div id="stats"></div>
+  <div id="pool-toggles"></div>
+  <div class="hdivider"></div>
+  <div id="scan-msg"></div>
+</header>
+
+<!-- ── Toolbar ─────────────────────────────────────────────────────────── -->
+<div class="toolbar">
+  <select id="playlist-select" onchange="onPlaylistChange()">
+    <option value="">All Playlists</option>
+  </select>
+  <div class="toolbar-divider"></div>
+  <input id="playlist-url" type="text" placeholder="Paste Spotify playlist URL…" onkeydown="if(event.key==='Enter') syncPlaylist()">
+  <button class="btn btn-search" onclick="syncPlaylist()" id="btn-sync">⟳ Load</button>
+  <div class="toolbar-divider"></div>
+  <button class="btn" onclick="rescanLibrary()" id="btn-rescan">🔄 Rescan</button>
+  <button class="btn" onclick="openReviews()" id="btn-reviews" style="display:none">⚠️ Review<span class="review-badge" id="review-count">0</span></button>
+  <button class="btn" onclick="exportCSV()">📥 Export</button>
+  <div id="toolbar-msg"></div>
+</div>
+
+<!-- Review modal -->
+<div class="modal-backdrop hidden" id="review-modal" onclick="if(event.target===this) closeReviews()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚠️ Review Uncertain Matches</div>
+      <button class="modal-close" onclick="closeReviews()">&times;</button>
+    </div>
+    <div class="modal-body" id="review-list"></div>
+  </div>
+</div>
+
+<!-- ── Main ────────────────────────────────────────────────────────────── -->
+<main>
+
+  <!-- Left panel: track list -->
+  <div class="left-panel">
+    <div class="filter-wrap">
+      <input id="filter" type="text" placeholder="🔍  Filter by artist or title…" oninput="applyFilter()">
+    </div>
+    <div class="playlist-label" id="playlist-label">Loading…</div>
+    <div id="track-list"></div>
+  </div>
+
+  <!-- Right panel: track detail + actions -->
+  <div class="right-panel">
+
+    <!-- Search buttons -->
+    <div class="search-bar">
+      <span class="search-bar-label">Open in:</span>
+      <button class="btn btn-search" id="btn-search-all" onclick="doSearch()" disabled>🔍 All Pools</button>
+      <div id="pool-search-btns"></div>
+    </div>
+
+    <!-- Track detail -->
+    <div class="detail-panel" id="detail-panel">
+      <div class="detail-empty">
+        <div class="de-icon">🎵</div>
+        <div class="de-text">Select a track from the list to get started</div>
+      </div>
+    </div>
+
+    <!-- Status actions -->
+    <div class="action-bar">
+      <button class="btn btn-got"      id="btn-got"      onclick="setStatus('downloaded')" disabled>🟢 Got It</button>
+      <button class="btn btn-notfound" id="btn-notfound" onclick="setStatus('not_found')"  disabled>🔴 Not Found</button>
+      <button class="btn btn-skip"     id="btn-skip"     onclick="setStatus('skipped')"    disabled>⚫ Skip</button>
+      <div class="action-spacer"></div>
+      <button class="btn" onclick="unmatchTrack()" id="btn-unmatch" disabled style="font-size:12px;border-color:var(--red);display:none">✗ Unmatch</button>
+      <button class="btn" onclick="setStatus('pending')" id="btn-reset" disabled style="font-size:12px;opacity:0.6">↩ Reset</button>
+    </div>
+
+  </div>
+</main>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+const S = {
+  tracks:     [],
+  pools:      {},
+  playlists:  [],
+  playlistId: null,
+  selId:      null,
+  filter:     '',
+};
+
+const STATUS_EMOJI  = { pending:'⬜', found:'🟡', downloaded:'🟢', not_found:'🔴', skipped:'⚫' };
+const STATUS_LABEL  = { pending:'Pending', found:'Found', downloaded:'Downloaded', not_found:'Not Found', skipped:'Skipped' };
+
+// Named window targets — browser reuses these windows on subsequent searches
+const POOL_WINDOW = {};
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+async function boot() {
+  await loadPools();
+  await loadPlaylists();
+  await Promise.all([loadTracks(), loadPlaylistLabel()]);
+  pollScan();
+}
+
+// ── Playlists ───────────────────────────────────────────────────────────────
+async function loadPlaylists() {
+  S.playlists = await fetch('/api/playlists').then(r => r.json());
+  const sel = document.getElementById('playlist-select');
+  sel.innerHTML = '<option value="">All Playlists</option>';
+  for (const pl of S.playlists) {
+    const opt = document.createElement('option');
+    opt.value = pl.id;
+    opt.textContent = `${pl.name} (${pl.total})`;
+    sel.appendChild(opt);
+  }
+  // Auto-select first playlist if only one exists
+  if (S.playlists.length === 1 && !S.playlistId) {
+    S.playlistId = S.playlists[0].id;
+    sel.value = S.playlistId;
+  } else if (S.playlistId) {
+    sel.value = S.playlistId;
+  }
+}
+
+function onPlaylistChange() {
+  S.playlistId = document.getElementById('playlist-select').value || null;
+  S.selId = null;
+  loadTracks();
+  loadPlaylistLabel();
+}
+
+function exportCSV() {
+  const url = S.playlistId
+    ? `/api/export/csv?playlist_id=${S.playlistId}`
+    : '/api/export/csv';
+  window.location.href = url;
+}
+
+// ── Playlist sync ───────────────────────────────────────────────────────────
+async function syncPlaylist() {
+  const url = document.getElementById('playlist-url').value.trim();
+  if (!url) return;
+  document.getElementById('btn-sync').disabled = true;
+  setToolbarMsg('Syncing playlist…');
+  await fetch('/api/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  });
+  pollSync();
+}
+
+async function pollSync() {
+  const s = await fetch('/api/sync/status').then(r => r.json());
+  if (s.running) {
+    const pct = s.total > 0 ? Math.round(s.imported / s.total * 100) : 0;
+    setToolbarMsg(`Syncing "${s.name}"… ${s.imported}/${s.total} tracks (${pct}%)`);
+    setTimeout(pollSync, 800);
+  } else if (s.done) {
+    document.getElementById('btn-sync').disabled = false;
+    if (s.error) {
+      setToolbarMsg(`Error: ${s.error}`, true);
+    } else {
+      setToolbarMsg(`Loaded "${s.name}" — ${s.imported} tracks`);
+      document.getElementById('playlist-url').value = '';
+      await loadPlaylists();
+      // Auto-select the newly loaded playlist
+      if (S.playlists.length > 0) {
+        S.playlistId = S.playlists[0].id;  // most recently synced
+        document.getElementById('playlist-select').value = S.playlistId;
+      }
+      await loadTracks();
+      await loadPlaylistLabel();
+      setTimeout(() => setToolbarMsg(''), 5000);
+    }
+  }
+}
+
+// ── Rescan library ───────────────────────────────────────────────────────────
+async function rescanLibrary() {
+  document.getElementById('btn-rescan').disabled = true;
+  await fetch('/api/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rescan: true }),
+  });
+  pollScan();
+}
+
+function setToolbarMsg(msg, isError = false) {
+  const el = document.getElementById('toolbar-msg');
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--red)' : 'var(--text-muted)';
+}
+
+
+
+// ── Pools ──────────────────────────────────────────────────────────────────
+async function loadPools() {
+  S.pools = await fetch('/api/pools').then(r => r.json());
+  renderToggles();
+  renderPoolSearchBtns();
+}
+
+function renderToggles() {
+  const el = document.getElementById('pool-toggles');
+  el.innerHTML = '';
+  for (const [key, p] of Object.entries(S.pools)) {
+    const btn = document.createElement('button');
+    btn.className = 'pool-toggle' + (p.enabled ? ' on' : '');
+    btn.textContent = `${p.emoji} ${p.name}`;
+    btn.onclick = () => togglePool(key);
+    el.appendChild(btn);
+  }
+}
+
+function renderPoolSearchBtns() {
+  const el = document.getElementById('pool-search-btns');
+  el.innerHTML = '';
+  el.style.display = 'flex';
+  el.style.gap = '8px';
+  for (const [key, p] of Object.entries(S.pools)) {
+    const btn = document.createElement('button');
+    btn.id = `btn-search-${key}`;
+    btn.className = 'btn';
+    btn.textContent = `${p.emoji} ${p.name}`;
+    btn.disabled = true;
+    btn.onclick = () => doSearch(key);
+    el.appendChild(btn);
+  }
+}
+
+async function togglePool(key) {
+  const res = await fetch(`/api/pools/${key}/toggle`, { method: 'POST' });
+  const data = await res.json();
+  S.pools[key].enabled = data.enabled;
+  renderToggles();
+  renderPoolSearchBtns();
+  // Re-enable search button states based on current selection
+  if (S.selId) setButtonsDisabled(false);
+}
+
+// ── Playlist ───────────────────────────────────────────────────────────────
+async function loadPlaylistLabel() {
+  const el = document.getElementById('playlist-label');
+  if (S.playlistId) {
+    const pl = S.playlists.find(p => p.id === S.playlistId);
+    if (pl) {
+      el.textContent = `📋 ${pl.name}  ·  ${pl.owner}`;
+      document.title = `🎧 ${pl.name} — DJ Pool Tool`;
+    }
+  } else {
+    const total = S.playlists.reduce((n, p) => n + p.total, 0);
+    el.textContent = `📋 All Playlists  ·  ${S.playlists.length} playlists, ${total} tracks`;
+    document.title = '🎧 DJ Pool Tool';
+  }
+}
+
+// ── Tracks ─────────────────────────────────────────────────────────────────
+async function loadTracks() {
+  const qs = S.playlistId ? `?playlist_id=${S.playlistId}` : '';
+  S.tracks = await fetch(`/api/tracks${qs}`).then(r => r.json());
+  renderTrackList();
+  renderStats();
+  updateReviewBadge();
+  // Refresh detail panel if a track is selected
+  if (S.selId) renderDetail(S.tracks.find(t => t.id === S.selId));
+}
+
+function applyFilter() {
+  S.filter = document.getElementById('filter').value;
+  renderTrackList();
+}
+
+function filteredTracks() {
+  if (!S.filter) return S.tracks;
+  const f = S.filter.toLowerCase();
+  return S.tracks.filter(t =>
+    t.artist.toLowerCase().includes(f) ||
+    t.track_name.toLowerCase().includes(f)
+  );
+}
+
+function renderTrackList() {
+  const el     = document.getElementById('track-list');
+  const tracks = filteredTracks();
+
+  if (!tracks.length) {
+    el.innerHTML = '<div class="empty-msg">No tracks match the filter</div>';
+    return;
+  }
+
+  el.innerHTML = '';
+  for (const t of tracks) {
+    const div = document.createElement('div');
+    div.className = 'track-item' + (t.id === S.selId ? ' active' : '');
+    div.dataset.id = t.id;
+
+    let fileTag = '';
+    if (t.match_status === 'review') {
+      fileTag = `<span class="track-review-badge">⚠️ review match</span>`;
+    } else if (t.local_path) {
+      fileTag = `<span class="track-has-file">📁 on disk</span>`;
+    }
+
+    div.innerHTML = `
+      <div class="track-emoji">${STATUS_EMOJI[t.status] || '⬜'}</div>
+      <div class="track-body">
+        <div class="track-name">${esc(t.track_name)}</div>
+        <div class="track-artist">${esc(t.artist)}</div>
+        ${fileTag}
+      </div>`;
+
+    div.onclick = () => selectTrack(t.id);
+    el.appendChild(div);
+  }
+}
+
+function renderStats() {
+  const counts = {};
+  let local = 0;
+  for (const t of S.tracks) {
+    counts[t.status] = (counts[t.status] || 0) + 1;
+    if (t.local_path) local++;
+  }
+  document.getElementById('stats').innerHTML = `
+    <span class="stat">Total <strong>${S.tracks.length}</strong></span>
+    <span class="stat">⬜ <strong>${counts.pending    || 0}</strong></span>
+    <span class="stat" style="color:var(--green)">🟢 <strong>${counts.downloaded || 0}</strong></span>
+    <span class="stat" style="color:var(--blue)">📁 <strong>${local}</strong></span>
+    <span class="stat" style="color:var(--red)">🔴 <strong>${counts.not_found  || 0}</strong></span>
+    <span class="stat" style="color:var(--text-muted)">⚫ <strong>${counts.skipped   || 0}</strong></span>
+  `;
+}
+
+// ── Track selection ─────────────────────────────────────────────────────────
+function selectTrack(id) {
+  S.selId = id;
+  renderTrackList();
+  const t = S.tracks.find(t => t.id === id);
+  renderDetail(t);
+  setButtonsDisabled(false);
+  // Show Unmatch button only if this track has a file match (auto or approved)
+  const unmatchBtn = document.getElementById('btn-unmatch');
+  if (t && t.local_path && (t.match_status === 'auto' || t.match_status === 'approved')) {
+    unmatchBtn.style.display = '';
+    unmatchBtn.disabled = false;
+  } else {
+    unmatchBtn.style.display = 'none';
+  }
+}
+
+function renderDetail(t) {
+  const el = document.getElementById('detail-panel');
+  if (!t) {
+    el.innerHTML = `<div class="detail-empty">
+      <div class="de-icon">🎵</div>
+      <div class="de-text">Select a track from the list to get started</div>
+    </div>`;
+    return;
+  }
+
+  let fileHtml = '';
+  if (t.local_path && t.match_status === 'review') {
+    const pct = Math.round((t.match_confidence || 0) * 100);
+    fileHtml = `
+    <div class="local-file-box" style="border-color:var(--yellow);background:rgba(176,144,64,0.1)">
+      <div class="local-file-label" style="color:var(--yellow)">⚠️ Potential match (${pct}% confidence) — needs review</div>
+      <div class="local-file-path">${esc(t.local_path)}</div>
+    </div>`;
+  } else if (t.local_path) {
+    fileHtml = `
+    <div class="local-file-box">
+      <div class="local-file-label">📁 File found on disk</div>
+      <div class="local-file-path">${esc(t.local_path)}</div>
+    </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-status">${STATUS_EMOJI[t.status] || '⬜'}</div>
+      <div class="detail-title-block">
+        <div class="detail-title">${esc(t.track_name)}</div>
+        <div class="detail-artist">${esc(t.artist)}</div>
+        ${t.album ? `<div class="detail-album">${esc(t.album)}</div>` : ''}
+      </div>
+    </div>
+    <div class="detail-divider"></div>
+    <div class="detail-status-row">
+      Status: <span class="status-badge">${STATUS_EMOJI[t.status] || '⬜'} ${STATUS_LABEL[t.status] || t.status}</span>
+    </div>
+    ${fileHtml}
+  `;
+}
+
+function setButtonsDisabled(disabled) {
+  ['btn-got', 'btn-notfound', 'btn-skip', 'btn-reset'].forEach(id => {
+    document.getElementById(id).disabled = disabled;
+  });
+  // Search buttons
+  document.getElementById('btn-search-all').disabled = disabled;
+  for (const key of Object.keys(S.pools)) {
+    const b = document.getElementById(`btn-search-${key}`);
+    if (b) b.disabled = disabled;
+  }
+}
+
+// ── Search — opens named browser windows (reused on each search) ────────────
+async function doSearch(onlyPool = null) {
+  if (!S.selId) return;
+
+  for (const [key, p] of Object.entries(S.pools)) {
+    if (onlyPool && key !== onlyPool) continue;
+    if (!p.enabled && !onlyPool) continue;
+
+    const data = await fetch(`/api/search-url/${S.selId}/${key}`).then(r => r.json());
+    // Named target reuses the same window; features only apply on first open
+    const win = window.open(data.url, `dj_pool_${key}`, 'width=1000,height=800,left=1000,top=0');
+    POOL_WINDOW[key] = win;
+  }
+}
+
+// ── Status update ───────────────────────────────────────────────────────────
+async function setStatus(status) {
+  if (!S.selId) return;
+
+  const prevId    = S.selId;
+  const prevList  = filteredTracks();
+  const prevIndex = prevList.findIndex(t => t.id === prevId);
+
+  await fetch(`/api/tracks/${prevId}/status`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ status }),
+  });
+
+  await loadTracks();
+
+  // Auto-advance to the track now at the same position
+  const newList = filteredTracks();
+  if (newList.length) {
+    const next = newList[Math.min(prevIndex, newList.length - 1)];
+    selectTrack(next.id);
+  } else {
+    S.selId = null;
+    renderDetail(null);
+    setButtonsDisabled(true);
+  }
+}
+
+// ── Library scan ────────────────────────────────────────────────────────────
+async function pollScan() {
+  const s  = await fetch('/api/scan/status').then(r => r.json());
+  const el = document.getElementById('scan-msg');
+
+  if (s.running) {
+    const pct = s.total > 0 ? Math.round(s.scanned / s.total * 100) : 0;
+    el.textContent = `Scanning library… ${pct}%`;
+    setTimeout(pollScan, 1500);
+  } else if (s.done) {
+    document.getElementById('btn-rescan').disabled = false;
+    if (s.found > 0) {
+      el.textContent = `Library scan complete — ${s.found} file${s.found !== 1 ? 's' : ''} found on disk`;
+      await loadTracks();
+      setTimeout(() => { el.textContent = ''; }, 6000);
+    } else {
+      el.textContent = '';
+    }
+  }
+}
+
+// ── Reviews ─────────────────────────────────────────────────────────────────
+function updateReviewBadge() {
+  const reviewCount = S.tracks.filter(t => t.match_status === 'review').length;
+  const btn = document.getElementById('btn-reviews');
+  const badge = document.getElementById('review-count');
+  if (reviewCount > 0) {
+    btn.style.display = '';
+    badge.textContent = reviewCount;
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+async function openReviews() {
+  const res = await fetch('/api/reviews');
+  const reviews = await res.json();
+  const el = document.getElementById('review-list');
+
+  if (!reviews.length) {
+    el.innerHTML = '<div class="modal-empty">No matches to review</div>';
+  } else {
+    el.innerHTML = reviews.map(r => `
+      <div class="review-item" id="review-${r.id}">
+        <div class="review-row">
+          <div class="review-left">
+            <div class="review-label">Playlist Track</div>
+            <div class="review-track">${esc(r.track_name)}</div>
+            <div class="review-artist">${esc(r.artist)}</div>
+          </div>
+          <div class="review-right">
+            <div class="review-label">Matched File</div>
+            <div class="review-file">${esc(r.local_path)}</div>
+            <div class="review-conf">Confidence: ${Math.round((r.match_confidence || 0) * 100)}%</div>
+          </div>
+        </div>
+        <div class="review-actions">
+          <button class="btn btn-got" onclick="approveMatch('${r.id}')">✓ Match</button>
+          <button class="btn btn-notfound" onclick="rejectMatch('${r.id}')">✗ No Match</button>
+          <button class="btn btn-skip" onclick="skipScan('${r.id}')" title="Stop trying to match this track on future scans">🚫 Reject Track</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('review-modal').classList.remove('hidden');
+}
+
+function closeReviews() {
+  document.getElementById('review-modal').classList.add('hidden');
+}
+
+async function approveMatch(trackId) {
+  await fetch(`/api/reviews/${trackId}/approve`, { method: 'POST' });
+  document.getElementById(`review-${trackId}`)?.remove();
+  await loadTracks();
+  // Close modal if no reviews left
+  if (!document.querySelector('.review-item')) {
+    closeReviews();
+  }
+}
+
+async function rejectMatch(trackId) {
+  await fetch(`/api/reviews/${trackId}/reject`, { method: 'POST' });
+  document.getElementById(`review-${trackId}`)?.remove();
+  await loadTracks();
+  if (!document.querySelector('.review-item')) {
+    closeReviews();
+  }
+}
+
+async function skipScan(trackId) {
+  await fetch(`/api/reviews/${trackId}/skip`, { method: 'POST' });
+  document.getElementById(`review-${trackId}`)?.remove();
+  await loadTracks();
+  if (!document.querySelector('.review-item')) {
+    closeReviews();
+  }
+}
+
+// ── Unmatch ─────────────────────────────────────────────────────────────────
+async function unmatchTrack() {
+  if (!S.selId) return;
+  await fetch(`/api/tracks/${S.selId}/unmatch`, { method: 'POST' });
+  await loadTracks();
+  const t = S.tracks.find(t => t.id === S.selId);
+  if (t) {
+    renderDetail(t);
+    selectTrack(t.id);
+  }
+}
+
+// ── Utility ─────────────────────────────────────────────────────────────────
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+boot();
+</script>
+</body>
+</html>

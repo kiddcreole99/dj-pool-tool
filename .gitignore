@@ -1,0 +1,10 @@
+data/config.json
+data/.spotify_cache
+data/tracks.db
+data/export_*.csv
+data/dupes_*.csv
+data/test_dupes.csv
+__pycache__/
+*.pyc
+*.tar.gz
+.claude/
