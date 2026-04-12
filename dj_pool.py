@@ -87,6 +87,12 @@ POOL_CONFIGS = {
         "color":        "green",
         "emoji":        "🎧",
     },
+    "bpmsupreme": {
+        "name":         "BPM Supreme",
+        "url_template": "https://app.bpmsupreme.com/d/search?searchTerm={query}",
+        "color":        "magenta",
+        "emoji":        "🔥",
+    },
 }
 
 STATUS_STYLES = {

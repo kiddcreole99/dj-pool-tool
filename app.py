@@ -58,6 +58,12 @@ POOL_CONFIGS = {
         "homepage":     "https://www.beatport.com/",
         "emoji":        "🎧",
     },
+    "bpmsupreme": {
+        "name":         "BPM Supreme",
+        "url_template": "https://app.bpmsupreme.com/d/search?searchTerm={query}",
+        "homepage":     "https://app.bpmsupreme.com/",
+        "emoji":        "🔥",
+    },
 }
 
 # In-memory pool toggle state
