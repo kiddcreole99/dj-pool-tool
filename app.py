@@ -64,6 +64,12 @@ POOL_CONFIGS = {
         "homepage":     "https://app.bpmsupreme.com/",
         "emoji":        "🔥",
     },
+    "djcity": {
+        "name":         "DJcity",
+        "url_template": "https://www.djcity.com/search-overview?q={query}",
+        "homepage":     "https://www.djcity.com/",
+        "emoji":        "🏙️",
+    },
 }
 
 # In-memory pool toggle state

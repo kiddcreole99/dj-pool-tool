@@ -93,6 +93,12 @@ POOL_CONFIGS = {
         "color":        "magenta",
         "emoji":        "🔥",
     },
+    "djcity": {
+        "name":         "DJcity",
+        "url_template": "https://www.djcity.com/search-overview?q={query}",
+        "color":        "yellow",
+        "emoji":        "🏙️",
+    },
 }
 
 STATUS_STYLES = {
@@ -525,7 +531,7 @@ def cmd_export(args, conn):
     with open(out, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["Artist","Track","Album","Duration","Status","Found On","Notes",
-                         "Spotify ID","MP3Pool Search","Beatport Search"])
+                         "Spotify ID","MP3Pool Search","Beatport Search","DJcity Search"])
         for row in tracks:
             t = dict(zip(TRACK_COLS, row))
             writer.writerow([
@@ -534,6 +540,7 @@ def cmd_export(args, conn):
                 t["status"], t["found_on"], t["notes"], t["id"],
                 build_search_url("mp3pool",  t["artist"], t["track_name"]),
                 build_search_url("beatport", t["artist"], t["track_name"]),
+                build_search_url("djcity",   t["artist"], t["track_name"]),
             ])
     console.print(f"[green]✓ Exported {len(tracks)} tracks to {out}[/green]")
 
