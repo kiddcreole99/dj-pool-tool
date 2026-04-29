@@ -557,6 +557,11 @@
       <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px">Music Library Path</label>
       <input id="settings-music-path" type="text" placeholder="/music" style="width:100%; padding:8px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px;">
       <div style="margin-top:6px; font-size:11px; color:var(--text-dim)">Path inside the container where your music is mounted (e.g. /music)</div>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:16px; color:var(--text-muted); font-size:12px; cursor:pointer">
+        <input id="settings-fast-scan" type="checkbox" style="width:16px; height:16px; cursor:pointer;">
+        Fast scan (filename only, skip ID3 tags)
+      </label>
+      <div style="margin-top:4px; font-size:11px; color:var(--text-dim)">Much faster over network shares. Matches on filename instead of reading metadata from each file.</div>
       <button class="btn btn-search" onclick="saveSettings()" style="margin-top:16px">Save</button>
       <span id="settings-msg" style="margin-left:12px; font-size:12px; color:var(--green)"></span>
     </div>
@@ -1058,6 +1063,7 @@ async function openSettings() {
   const res = await fetch('/api/settings');
   const data = await res.json();
   document.getElementById('settings-music-path').value = (data.music_paths || [])[0] || '';
+  document.getElementById('settings-fast-scan').checked = data.fast_scan || false;
   document.getElementById('settings-msg').textContent = '';
   document.getElementById('settings-modal').classList.remove('hidden');
 }
@@ -1069,10 +1075,11 @@ function closeSettings() {
 async function saveSettings() {
   const path = document.getElementById('settings-music-path').value.trim();
   const music_paths = path ? [path] : [];
+  const fast_scan = document.getElementById('settings-fast-scan').checked;
   await fetch('/api/settings', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ music_paths })
+    body: JSON.stringify({ music_paths, fast_scan })
   });
   document.getElementById('settings-msg').textContent = 'Saved!';
   setTimeout(() => document.getElementById('settings-msg').textContent = '', 2000);

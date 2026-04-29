@@ -105,6 +105,19 @@ def migrate_db():
             PRIMARY KEY (track_id, file_path)
         )
     """)
+    # Junction table: a track can belong to multiple playlists
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS playlist_tracks (
+            playlist_id TEXT NOT NULL,
+            track_id    TEXT NOT NULL,
+            PRIMARY KEY (playlist_id, track_id)
+        )
+    """)
+    # Migrate existing data into playlist_tracks
+    conn.execute("""
+        INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_id)
+        SELECT playlist_id, id FROM tracks WHERE playlist_id IS NOT NULL
+    """)
     conn.commit()
     conn.close()
 
@@ -165,7 +178,7 @@ def _file_matches(artist: str, title: str, path: Path) -> bool:
     return matched >= 0.75 and artist_hit
 
 
-def _build_file_index(music_paths: list) -> list:
+def _build_file_index(music_paths: list, fast=False) -> list:
     """Read all audio files once, extract metadata into an in-memory index."""
     global scan_status
     scan_status.update(indexing=True, indexed=0)
@@ -179,14 +192,15 @@ def _build_file_index(music_paths: list) -> list:
                 continue
             tag_title_words  = set()
             tag_artist_words = set()
-            try:
-                tags = EasyID3(str(f))
-                tag_title_words  = set(_normalize(_strip_extras(
-                    tags.get("title", [""])[0])).split())
-                tag_artist_words = set(_normalize(
-                    " ".join(tags.get("artist", []))).split())
-            except Exception:
-                pass
+            if not fast:
+                try:
+                    tags = EasyID3(str(f))
+                    tag_title_words  = set(_normalize(_strip_extras(
+                        tags.get("title", [""])[0])).split())
+                    tag_artist_words = set(_normalize(
+                        " ".join(tags.get("artist", []))).split())
+                except Exception:
+                    pass
             stem_core  = _normalize(_strip_extras(f.stem))
             stem_words = set(stem_core.split()) if stem_core.strip() else set(_normalize(f.stem).split())
             full_stem_words = set(_normalize(f.stem).split())
@@ -246,8 +260,9 @@ def _scan_library():
             return
 
         # Phase 1: Build index (read all files once)
+        fast = cfg.get("fast_scan", False)
         scan_status.update(total=0, scanned=0, found=0)
-        index = _build_file_index(music_paths)
+        index = _build_file_index(music_paths, fast=fast)
 
         # Phase 2: Match tracks against index
         conn   = get_db()
@@ -364,7 +379,6 @@ def _do_sync(playlist_url: str):
                     VALUES (:id, :playlist_id, :playlist_name, :track_name, :artist, :album,
                             :duration_ms, :added_at, 'pending', :updated_at)
                     ON CONFLICT(id) DO UPDATE SET
-                        playlist_name = excluded.playlist_name,
                         track_name    = excluded.track_name,
                         artist        = excluded.artist,
                         album         = excluded.album,
@@ -380,6 +394,10 @@ def _do_sync(playlist_url: str):
                     "added_at":      item.get("added_at", ""),
                     "updated_at":    datetime.now().isoformat(),
                 })
+                conn.execute(
+                    "INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_id) VALUES (?, ?)",
+                    (playlist_id, track["id"])
+                )
                 conn.commit()
                 imported += 1
                 sync_status["imported"] = imported
@@ -423,8 +441,9 @@ def api_tracks():
     playlist_id = request.args.get("playlist_id")
     if playlist_id:
         rows = conn.execute(
-            "SELECT id, artist, track_name, album, status, local_path, match_status, match_confidence "
-            "FROM tracks WHERE playlist_id=? ORDER BY artist, track_name", (playlist_id,)
+            "SELECT t.id, t.artist, t.track_name, t.album, t.status, t.local_path, t.match_status, t.match_confidence "
+            "FROM tracks t JOIN playlist_tracks pt ON t.id = pt.track_id "
+            "WHERE pt.playlist_id=? ORDER BY t.artist, t.track_name", (playlist_id,)
         ).fetchall()
     else:
         rows = conn.execute(
@@ -469,7 +488,7 @@ def api_toggle_pool(pool_key):
 @app.route("/api/settings", methods=["GET"])
 def api_settings_get():
     cfg = load_config()
-    return jsonify({"music_paths": cfg.get("music_paths", [])})
+    return jsonify({"music_paths": cfg.get("music_paths", []), "fast_scan": cfg.get("fast_scan", False)})
 
 
 @app.route("/api/settings", methods=["POST"])
@@ -478,9 +497,11 @@ def api_settings_post():
     cfg = load_config()
     if "music_paths" in data:
         cfg["music_paths"] = [p.strip() for p in data["music_paths"] if p.strip()]
+    if "fast_scan" in data:
+        cfg["fast_scan"] = bool(data["fast_scan"])
     CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_FILE.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
-    return jsonify({"ok": True, "music_paths": cfg["music_paths"]})
+    return jsonify({"ok": True, "music_paths": cfg["music_paths"], "fast_scan": cfg.get("fast_scan", False)})
 
 
 @app.route("/api/search-url/<track_id>/<pool_key>")
@@ -503,14 +524,24 @@ def api_search_url(track_id, pool_key):
 def api_stats():
     conn  = get_db()
     playlist_id = request.args.get("playlist_id")
-    where = "WHERE playlist_id=?" if playlist_id else "WHERE 1=1"
-    params = (playlist_id,) if playlist_id else ()
-    rows  = conn.execute(
-        f"SELECT status, COUNT(*) as n FROM tracks {where} GROUP BY status", params
-    ).fetchall()
-    local = conn.execute(
-        f"SELECT COUNT(*) as n FROM tracks {where} AND local_path IS NOT NULL", params
-    ).fetchone()
+    if playlist_id:
+        rows = conn.execute(
+            "SELECT t.status, COUNT(*) as n FROM tracks t "
+            "JOIN playlist_tracks pt ON t.id = pt.track_id "
+            "WHERE pt.playlist_id=? GROUP BY t.status", (playlist_id,)
+        ).fetchall()
+        local = conn.execute(
+            "SELECT COUNT(*) as n FROM tracks t "
+            "JOIN playlist_tracks pt ON t.id = pt.track_id "
+            "WHERE pt.playlist_id=? AND t.local_path IS NOT NULL", (playlist_id,)
+        ).fetchone()
+    else:
+        rows = conn.execute(
+            "SELECT status, COUNT(*) as n FROM tracks GROUP BY status"
+        ).fetchall()
+        local = conn.execute(
+            "SELECT COUNT(*) as n FROM tracks WHERE local_path IS NOT NULL"
+        ).fetchone()
     conn.close()
     stats = {r["status"]: r["n"] for r in rows}
     stats["local"] = local["n"] if local else 0
@@ -626,8 +657,9 @@ def api_export_csv():
     playlist_id = request.args.get("playlist_id")
     if playlist_id:
         rows = conn.execute(
-            "SELECT artist, track_name, album, status, match_status, local_path, match_confidence "
-            "FROM tracks WHERE playlist_id=? ORDER BY artist, track_name", (playlist_id,)
+            "SELECT t.artist, t.track_name, t.album, t.status, t.match_status, t.local_path, t.match_confidence "
+            "FROM tracks t JOIN playlist_tracks pt ON t.id = pt.track_id "
+            "WHERE pt.playlist_id=? ORDER BY t.artist, t.track_name", (playlist_id,)
         ).fetchall()
         pl = conn.execute("SELECT name FROM playlists WHERE id=?", (playlist_id,)).fetchone()
         filename = f"{pl['name']}.csv" if pl else "playlist.csv"
