@@ -462,6 +462,23 @@ def api_toggle_pool(pool_key):
     return jsonify({"enabled": pool_state[pool_key]})
 
 
+@app.route("/api/settings", methods=["GET"])
+def api_settings_get():
+    cfg = load_config()
+    return jsonify({"music_paths": cfg.get("music_paths", [])})
+
+
+@app.route("/api/settings", methods=["POST"])
+def api_settings_post():
+    data = request.json or {}
+    cfg = load_config()
+    if "music_paths" in data:
+        cfg["music_paths"] = [p.strip() for p in data["music_paths"] if p.strip()]
+    CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    CONFIG_FILE.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    return jsonify({"ok": True, "music_paths": cfg["music_paths"]})
+
+
 @app.route("/api/search-url/<track_id>/<pool_key>")
 def api_search_url(track_id, pool_key):
     if pool_key not in POOL_CONFIGS:

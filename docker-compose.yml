@@ -6,4 +6,12 @@ services:
       - "5000:5000"
     volumes:
       - ./data:/app/data
+      - music:/music:ro
     restart: unless-stopped
+
+volumes:
+  music:
+    driver_opts:
+      type: cifs
+      o: "addr=TAG,username=guest,password=,file_mode=0444,dir_mode=0555"
+      device: "//TAG/DJ_Music"

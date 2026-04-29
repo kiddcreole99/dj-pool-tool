@@ -78,6 +78,12 @@
     .pool-toggle.on    { background: var(--accent-dim); border-color: var(--accent); color: var(--text); }
     .pool-toggle:hover { border-color: var(--accent); color: var(--text); }
 
+    .gear-btn {
+      background: none; border: none; color: var(--text-muted); cursor: pointer;
+      font-size: 18px; padding: 4px 8px; transition: color 0.15s;
+    }
+    .gear-btn:hover { color: var(--text); }
+
     #scan-msg { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
 
     /* ── Toolbar ──────────────────────────────────────────── */
@@ -509,6 +515,7 @@
   <div class="hdivider"></div>
   <div id="stats"></div>
   <div id="pool-toggles"></div>
+  <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
   <div class="hdivider"></div>
   <div id="scan-msg"></div>
 </header>
@@ -536,6 +543,23 @@
       <button class="modal-close" onclick="closeReviews()">&times;</button>
     </div>
     <div class="modal-body" id="review-list"></div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-backdrop hidden" id="settings-modal" onclick="if(event.target===this) closeSettings()">
+  <div class="modal" style="width:500px">
+    <div class="modal-header">
+      <div class="modal-title">&#9881; Settings</div>
+      <button class="modal-close" onclick="closeSettings()">&times;</button>
+    </div>
+    <div class="modal-body" style="padding:20px">
+      <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px">Music Library Path</label>
+      <input id="settings-music-path" type="text" placeholder="/music" style="width:100%; padding:8px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px;">
+      <div style="margin-top:6px; font-size:11px; color:var(--text-dim)">Path inside the container where your music is mounted (e.g. /music)</div>
+      <button class="btn btn-search" onclick="saveSettings()" style="margin-top:16px">Save</button>
+      <span id="settings-msg" style="margin-left:12px; font-size:12px; color:var(--green)"></span>
+    </div>
   </div>
 </div>
 
@@ -1023,6 +1047,31 @@ async function openReviews() {
 
 function closeReviews() {
   document.getElementById('review-modal').classList.add('hidden');
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+async function openSettings() {
+  const res = await fetch('/api/settings');
+  const data = await res.json();
+  document.getElementById('settings-music-path').value = (data.music_paths || [])[0] || '';
+  document.getElementById('settings-msg').textContent = '';
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+
+function closeSettings() {
+  document.getElementById('settings-modal').classList.add('hidden');
+}
+
+async function saveSettings() {
+  const path = document.getElementById('settings-music-path').value.trim();
+  const music_paths = path ? [path] : [];
+  await fetch('/api/settings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ music_paths })
+  });
+  document.getElementById('settings-msg').textContent = 'Saved!';
+  setTimeout(() => document.getElementById('settings-msg').textContent = '', 2000);
 }
 
 async function approveMatch(trackId) {
