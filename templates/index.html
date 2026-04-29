@@ -983,8 +983,12 @@ async function pollScan() {
   const el = document.getElementById('scan-msg');
 
   if (s.running) {
-    const pct = s.total > 0 ? Math.round(s.scanned / s.total * 100) : 0;
-    el.textContent = `Scanning library… ${pct}%`;
+    if (s.indexing || (s.total === 0 && !s.done)) {
+      el.textContent = `Indexing music files… ${s.indexed} found`;
+    } else {
+      const pct = s.total > 0 ? Math.round(s.scanned / s.total * 100) : 0;
+      el.textContent = `Matching tracks… ${pct}% (${s.found} matched)`;
+    }
     setTimeout(pollScan, 1500);
   } else if (s.done) {
     document.getElementById('btn-rescan').disabled = false;

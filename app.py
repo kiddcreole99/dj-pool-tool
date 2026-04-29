@@ -76,7 +76,7 @@ POOL_CONFIGS = {
 pool_state = {k: True for k in POOL_CONFIGS}
 
 # Background scan state
-scan_status = {"running": False, "done": False, "found": 0, "scanned": 0, "total": 0}
+scan_status = {"running": False, "done": False, "found": 0, "scanned": 0, "total": 0, "indexing": False, "indexed": 0}
 
 
 # ── Database ─────────────────────────────────────────────────────────────────
@@ -167,6 +167,8 @@ def _file_matches(artist: str, title: str, path: Path) -> bool:
 
 def _build_file_index(music_paths: list) -> list:
     """Read all audio files once, extract metadata into an in-memory index."""
+    global scan_status
+    scan_status.update(indexing=True, indexed=0)
     index = []  # list of (path, title_words, artist_words, stem_words)
     for path_str in music_paths:
         p = Path(path_str)
@@ -189,6 +191,8 @@ def _build_file_index(music_paths: list) -> list:
             stem_words = set(stem_core.split()) if stem_core.strip() else set(_normalize(f.stem).split())
             full_stem_words = set(_normalize(f.stem).split())
             index.append((f, tag_title_words, tag_artist_words, stem_words, full_stem_words))
+            scan_status["indexed"] = len(index)
+    scan_status["indexing"] = False
     return index
 
 
@@ -297,7 +301,7 @@ def start_scan(rescan=False):
                 WHERE match_status NOT IN ('skip_scan', 'approved') OR match_status IS NULL""")
             conn.commit()
             conn.close()
-        scan_status.update(running=True, done=False, found=0, scanned=0, total=0)
+        scan_status.update(running=True, done=False, found=0, scanned=0, total=0, indexing=False, indexed=0)
         threading.Thread(target=_scan_library, daemon=True).start()
 
 
