@@ -3,7 +3,7 @@ services:
     build: .
     image: dj-pool-tool:latest
     ports:
-      - "5000:5000"
+      - "5050:5000"
     volumes:
       - ./data:/app/data
       - /mnt/dj_music:/music:ro
